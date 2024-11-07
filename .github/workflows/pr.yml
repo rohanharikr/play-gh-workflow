@@ -31,13 +31,13 @@ jobs:
             echo "::set-output name=behind::false"
           fi
 
-      - name: Merge main into PR branch if behind
-        if: steps.check_main_sync.outputs.behind == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git merge origin/main --no-ff --commit -m "Merge main into PR branch"
-          git push origin HEAD
+      # - name: Merge main into PR branch if behind
+      #   if: steps.check_main_sync.outputs.behind == 'true'
+      #   run: |
+      #     git config user.name "github-actions[bot]"
+      #     git config user.email "github-actions[bot]@users.noreply.github.com"
+      #     git merge origin/main --no-ff --commit -m "Merge main into PR branch"
+      #     git push origin HEAD
 
       - name: Run tests
         # Only run tests if the branch is up-to-date with main or has been merged with main successfully.
