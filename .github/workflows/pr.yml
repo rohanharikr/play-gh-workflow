@@ -1,0 +1,63 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  pr_checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check if PR branch is behind main
+        id: check_main_sync
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor origin/main HEAD; then
+            echo "::set-output name=behind::true"
+          else
+            echo "::set-output name=behind::false"
+          fi
+
+      - name: Merge main into PR branch if behind
+        if: steps.check_main_sync.outputs.behind == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git merge origin/main --no-ff --commit -m "Merge main into PR branch"
+          git push origin HEAD
+
+      - name: Run tests
+        # Only run tests if the branch is up-to-date with main or has been merged with main successfully.
+        if: steps.check_main_sync.outputs.behind == 'false'
+        run: npm test
+
+      - name: Version bump (if tests pass)
+        if: steps.check_main_sync.outputs.behind == 'false' && success()
+        run: |
+          npm version patch --no-git-tag-version
+          git add package.json
+          git commit -m "Bump version [skip ci]"
+          git push origin HEAD
+
+      - name: Comment on PR after version bump
+        if: steps.check_main_sync.outputs.behind == 'false' && success()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              body: "Version bumped successfully. Ready to merge when approved!"
+            })
